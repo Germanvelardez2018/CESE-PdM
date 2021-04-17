@@ -6,7 +6,8 @@
  *      email: germanvelardez16@gmail.com
  */
 
-#include "ksi-uart.h"
+#include "ksi_serial.h"
+#include "ksi_memory_store.h"
 #include <stdarg.h>
 
 //Default value
@@ -14,7 +15,6 @@ static int8_t _uart = 1;
 static int32_t _baud = 9600;
 static QueueHandle_t uart_queue;   // QUEUE del uart
 static QueueHandle_t user_interface_queue;
-const static int32_t VALID_BAUD[5] = { 9600, 19200, 37400, 57200, 115200 };
 
 #define PATTERN_CHR_NUM    (3)
 #define PATTERN_CHR       ('C')
@@ -24,12 +24,6 @@ const static int32_t VALID_BAUD[5] = { 9600, 19200, 37400, 57200, 115200 };
 
  Private functions
  */
-
-
-
-
-
-
 
 /*
  * support functions
@@ -51,40 +45,22 @@ void ksi_serial_print(const char *fmt, ...) // custom printf() function
 	va_end(argp);
 }
 
-static int32_t get_valid_baud(int32_t baud) {
 
-	for (int8_t i = 0; i < sizeof(VALID_BAUD); i++) {
-		if (baud <= VALID_BAUD[i]) {
-			return VALID_BAUD[i];
-		}
-	}
-	return 9600;   // never happens
+void ksi_serial_setbaud(int32_t baud) {
+	_baud = baud;
+	uart_set_baudrate(_uart, _baud);
 }
 
-int8_t ksi_serial_setbaud(int32_t baud) {
-	if (baud == _baud) { //If _baud=19200 and set baud in 19200, than ignore the command.
-		return 0;
-	}
-	if (!( (baud >= 9600) && (baud <= 115200) )) {
-		return 0;                         //invalid param
-	} else {
-		_baud = get_valid_baud(baud);
-		return 1;
-	}
-
-}
 
 int32_t ksi_serial_getbaud() {
 
 	return _baud;
 }
 
-
 void ksi_serial_init(int8_t uart, int32_t baud) {
 	uart_config_t uart_config = { .baud_rate = baud, .data_bits =
 			UART_DATA_8_BITS, .parity = UART_PARITY_DISABLE, .stop_bits =
 			UART_STOP_BITS_1, .flow_ctrl = UART_HW_FLOWCTRL_DISABLE, //UART_HW_FLOWCTRL_DISABLE    UART_HW_FLOWCTRL_CTS_RTS
-
 			};
 	ksi_serial_setbaud(baud);
 	ESP_ERROR_CHECK(uart_param_config(uart, &uart_config));
@@ -97,14 +73,11 @@ void ksi_serial_init(int8_t uart, int32_t baud) {
 			0); // pattern is LF
 	//Reset the pattern queue length to record at most 20 pattern positions.
 	uart_pattern_queue_reset(uart, 20); //Se resetea la cola de posiciones en 20
-
 }
 
-void ksi_serial_close(int num_uart){
+void ksi_serial_deinit(int num_uart) {
 	uart_driver_delete(num_uart);
 }
-
-
 
 void ksi_task_serial(void *pvParameter) {
 	ksi_serial_init(_uart, _baud);
@@ -127,7 +100,7 @@ void ksi_task_serial(void *pvParameter) {
 				break;
 
 			case UART_FIFO_OVF:
-				PRINT( "hw fifo overflow");
+				PRINT("hw fifo overflow");
 				uart_flush_input(_uart);
 				xQueueReset(uart_queue);
 				break;
@@ -156,7 +129,6 @@ void ksi_task_serial(void *pvParameter) {
 				if (pos == -1) {
 					uart_flush_input(_uart);
 				} else {
-
 					com = (char*) malloc(pos + 1);
 					uart_read_bytes(_uart, com, pos, 100 / portTICK_PERIOD_MS); //lectura del comando
 					uint8_t pat[PATTERN_CHR_NUM + 1];
@@ -165,9 +137,6 @@ void ksi_task_serial(void *pvParameter) {
 							100 / portTICK_PERIOD_MS);
 					uart_flush(_uart);
 					com[pos] = '\0';
-
-					//printf("ESte es el comando recibido %s\n",com);
-
 					uart_commads.commands = (char*) malloc(pos + 1);
 					strcpy(uart_commads.commands, com);
 					uart_commads.size = pos + 1;
@@ -180,11 +149,8 @@ void ksi_task_serial(void *pvParameter) {
 			default:
 				PRINT("defaut case event type: %d", event.type);
 				break;
-
 			}
 		}  //if
-
 	} //for
 }
-
 

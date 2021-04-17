@@ -7,7 +7,8 @@ set(COMPONENT_PRIV_REQUIRES )
 
 set(COMPONENT_SRCS 
 "main.c"
-"ksi-uart.c")
+"ksi_serial.c"
+"ksi_memory_store.c")
 set(COMPONENT_ADD_INCLUDEDIRS "./inc")
 
 register_component()

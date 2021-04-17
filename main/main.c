@@ -7,12 +7,17 @@
 #include "driver/gpio.h"
 
 
+
+#include "ksi_serial.h"
+
 void app_main(void)
 {
 
+	ksi_serial_init(1, 19200);
+	int counter=0;
     while (true) {
-
-        vTaskDelay(300 / portTICK_PERIOD_MS);
+    	ksi_serial_print("counter: %d\n",counter++);
+        vTaskDelay(2500 / portTICK_PERIOD_MS);
     }
 }
 
