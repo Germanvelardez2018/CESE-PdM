@@ -14,7 +14,7 @@
 static int8_t _uart = 1;
 static int32_t _baud = 9600;
 static QueueHandle_t uart_queue;   // QUEUE del uart
-static QueueHandle_t user_interface_queue;
+extern QueueHandle_t user_interface_queue;
 
 #define PATTERN_CHR_NUM    (3)
 #define PATTERN_CHR       ('C')
@@ -81,6 +81,7 @@ void ksi_serial_deinit(int num_uart) {
 
 void ksi_task_serial(void *pvParameter) {
 	ksi_serial_init(_uart, _baud);
+	ksi_serial_print("Comenzamos task serial\n");
 
 	uart_event_t event; //Estructura para gestionar evento de uart, es el objeto que se usa en la QueueUart
 	size_t buffered_size;
@@ -89,6 +90,7 @@ void ksi_task_serial(void *pvParameter) {
 	ksi_commands uart_commads;
 
 	for (;;) {
+		printf("estamos esperando eventos\n");
 		if (xQueueReceive(uart_queue, (void*) &event,
 				(portTickType) portMAX_DELAY)) {
 			switch (event.type) {
@@ -151,6 +153,8 @@ void ksi_task_serial(void *pvParameter) {
 				break;
 			}
 		}  //if
+
+		vTaskDelay(200 / portTICK_PERIOD_MS);
 	} //for
 }
 
